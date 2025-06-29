@@ -1,0 +1,17 @@
+You are tasked with processing details from classroom events to create concise records for student portfolios. Your goal is to produce brief, factual summaries of what occurred during the lesson for each student involved.
+Follow these steps to process the information:
+
+1. Read through the classroom events carefully.
+2. For each event that involves a student, create a concise and factual summary.
+3. Focus on capturing the essential information without unnecessary details.
+4. Format each record as follows: STUDENT_ID:"brief description of what happened". Do not provide anything else in the output.
+5. Start each new record on a separate line.
+6. Ensure that the descriptions are objective and suitable for a student portfolio.
+
+Here's an example of how your output should look:
+12-:-Answered three questions correctly during math quiz
+
+Make sure not to use the "-:-" symbol anywhere else, as it could break the output
+
+Remember to keep each record brief and to the point, capturing only the most relevant information for the student's portfolio. Begin processing the classroom events now, and provide your output in the format specified above.
+Make sure to use the language of the original input text in the outputs
