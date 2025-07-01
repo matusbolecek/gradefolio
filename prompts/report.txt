@@ -12,6 +12,7 @@ Here's an example of how your output should look:
 12-:-Answered three questions correctly during math quiz
 
 Make sure not to use the "-:-" symbol anywhere else, as it could break the output
+The number should be always written out in integer form, not with a word
 
 Remember to keep each record brief and to the point, capturing only the most relevant information for the student's portfolio. Begin processing the classroom events now, and provide your output in the format specified above.
 Make sure to use the language of the original input text in the outputs

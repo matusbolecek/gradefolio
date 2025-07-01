@@ -18,6 +18,7 @@ Here's an example of how your output should look:
 Make sure not to put empty lines in between outputs
 
 Make sure not to use the "-:-" symbol anywhere else, as it could break the output.
+The number should be always written out in integer form, not with a word
 
 Remember to keep each record brief and to the point, capturing the most relevant information while accounting for typical inaccuracies in student self-reporting. Begin processing the student self-evaluations now, and provide your output in the format specified above.
 
