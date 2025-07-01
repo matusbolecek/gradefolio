@@ -43,17 +43,14 @@ def generate(students: list, group_name: str):
                     final_string += 'Reports from classes:\n'
                     for x in reports:
                         final_string += f'{x}\n'
-
                 if len(exams) != 0:
                     final_string += 'Exams:\n'
                     for x in exams:
                         final_string += f'{x}\n'
-
                 if len(finals) != 0:
                     final_string += 'Final summaries:\n'
                     for x in finals:
                         final_string += f'{x}\n'
-
                 if len(selfs) != 0:
                     final_string += 'Self evaluations:\n'
                     for x in selfs:
@@ -69,30 +66,29 @@ def generate(students: list, group_name: str):
                         input = prompt + final_string
                     )
                 except OpenAIError as e:
-                    st.error(f'Error: {e}')        
+                    st.error(f'Error: {e}')
+                else:
+                    ai_output = response.output_text.replace("**name**", name)
 
-                print(name)
-                ai_output = response.output_text.replace("**name**", name)
+                    # Generate PDF
+                    st.write("Generating the PDF")
+                    tex_filename = 'temp.tex'
+                    shutil.copyfile('template.tex', tex_filename)
 
-                # Generate PDF
-                st.write("Generating the PDF")
-                tex_filename = 'temp.tex'
-                shutil.copyfile('template.tex', tex_filename)
+                    with open(tex_filename, "a") as tex_file:
+                        tex_file.write(ai_output)
+                        tex_file.write('\end{document}')
 
-                with open(tex_filename, "a") as tex_file:
-                    tex_file.write(ai_output)
-                    tex_file.write('\end{document}')
-
-                pdf, log, _ = PDFLaTeX.from_texfile(tex_filename).create_pdf()
-                pdf_filename = f'exports/{group_name}/{idx}_{name.replace(" ", "-")}.pdf'
-                Path(Path(pdf_filename).parent).mkdir(parents=True, exist_ok=True) # Make sure the output folder exists
-                
-                with open(pdf_filename, 'wb') as f:
-                    f.write(pdf)
-                
-                os.remove('temp.tex')
-                progress += step
-                progress_placeholder.progress(progress, text=progressbar_caption)
+                    pdf, log, _ = PDFLaTeX.from_texfile(tex_filename).create_pdf()
+                    pdf_filename = f'exports/{group_name}/{idx}_{name.replace(" ", "-")}.pdf'
+                    Path(Path(pdf_filename).parent).mkdir(parents=True, exist_ok=True) # Make sure the output folder exists
+                    
+                    with open(pdf_filename, 'wb') as f:
+                        f.write(pdf)
+                    
+                    os.remove('temp.tex')
+                    progress += step
+                    progress_placeholder.progress(progress, text=progressbar_caption)
 
             else:
                 st.error(f'A database error occurred - the database *{group_name}.db* could not be found') # this should not happen
@@ -129,13 +125,8 @@ if group_name:
     if st.button("Submit"):
         selected = edited_df[edited_df['generate'] == True]
         if not selected.empty:
-            to_process = []
-            for idx, row in selected.iterrows():
-                to_process.append((idx, row['Students']))
-                print(idx, row)
-
+            to_process = [(idx, row['Students']) for idx, row in selected.iterrows()]
             generate(to_process, group_name) # temp
-
         else:
             st.info("No students selected.")
 

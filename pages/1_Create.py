@@ -1,14 +1,13 @@
 import streamlit as st
 import os
 from pathlib import Path
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 import pandas as pd
 
 import database_manager as dbman
 
 api_key = os.getenv('OPENAI_API_KEY')
 client = OpenAI()
-client.api_key = os.getenv("OPENAI_API_KEY")
 
 @st.dialog("Update succesful")
 def successful(keyword: str):
