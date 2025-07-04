@@ -143,13 +143,26 @@ if group_name:
         key="student_editor"
     )
 
-    if st.button("Submit"):
-        selected = edited_df[edited_df['generate'] == True]
-        if not selected.empty:
-            to_process = [(idx, row['Students']) for idx, row in selected.iterrows()]
-            generate(to_process, group_name) # temp
+    # Check if file exists
+    excluded = []
+    for idx, row in edited_df[edited_df['generate'] == True].iterrows():
+        filename = f'exports/{group_name}/{idx}_{row["Students"].replace(" ", "-")}.pdf'
+        if os.path.isfile(filename):
+            excluded.append((idx, row["Students"]))
+
+    overwrite = st.checkbox('Overwrite existing outputs', disabled = not len(excluded) > 0)
+    selected = edited_df[edited_df['generate'] == True]
+
+    if st.button("Submit", disabled = selected.empty):
+        to_process = [(idx, row["Students"]) for idx, row in selected.iterrows()]
+
+        if not overwrite:
+            to_process = [x for x in to_process if x not in excluded]
+
+        if to_process:
+            generate(to_process, group_name)
         else:
-            st.info("No students selected.")
+            st.info("No reports to process.")
 
     # Download section
     st.write("### Download PDFs")
@@ -171,5 +184,6 @@ if group_name:
                 mime="application/pdf",
                 key=f"{group_name}_{name}"
             )
+        
         else:
             col2.button(":x: Not created", key = name, disabled = True)
