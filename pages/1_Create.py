@@ -27,10 +27,10 @@ if st.session_state['processed_text'] == None:
     st.write("# Add an entry")
 
     groups = []
-    files = os.listdir('groups')
-    for file in files:
-        if Path(file).suffix == '.csv':
-            groups.append(Path(file).stem)
+    groups_dir = Path('groups')
+    if groups_dir.exists():
+        for file_path in groups_dir.glob('*.csv'):
+            groups.append(file_path.stem)
 
     group_name = st.selectbox('Class', groups)
 
@@ -40,7 +40,9 @@ if st.session_state['processed_text'] == None:
 
         audio_value = st.audio_input("Record a voice message")
         process_button = st.button('Process audio', disabled = not audio_value)
-        st.dataframe(pd.read_csv(f'groups/{group_name}.csv'))
+        
+        csv_path = groups_dir / f'{group_name}.csv'
+        st.dataframe(pd.read_csv(csv_path))
 
         if process_button:
             with st.sidebar.status('Processing...'):
@@ -54,7 +56,9 @@ if st.session_state['processed_text'] == None:
                     st.error(f'Error: {e}')
                 else:
                     st.write('Processing text...')
-                    prompt = open(f'prompts/{choice.lower()}.txt', 'r').read()
+                    prompt_path = Path('prompts') / f'{choice.lower()}.txt'
+                    prompt = prompt_path.read_text(encoding='utf-8')
+                    
                     try:
                         response = client.responses.create(
                             model="gpt-4.1",
@@ -90,8 +94,9 @@ else:
 
     save_to_db = st.button('Save to database')
     if save_to_db:
-        db_path = f'groups/{st.session_state["processed_text"][0]}.db'
-        csv_path = f'groups/{st.session_state["processed_text"][0]}.csv'
+        groups_dir = Path('groups')
+        db_path = groups_dir / f'{st.session_state["processed_text"][0]}.db'
+        csv_path = groups_dir / f'{st.session_state["processed_text"][0]}.csv'
         df = pd.read_csv(csv_path)
 
         correct_inputs, wrong_inputs = 0, 0
@@ -99,7 +104,7 @@ else:
             num, comment = line.split('-:-')
             try:
                 num = int(num) # Check if the num is in integer form
-                dbman.add(str(num), st.session_state['processed_text'][1].upper(), comment, db_path) # Add entry into db
+                dbman.add(str(num), st.session_state['processed_text'][1].upper(), comment, str(db_path)) # Add entry into db
             except ValueError:
                 st.session_state['error_msg'] = ('The input was processed incorrectly. Try again') # These do not show
                 wrong_inputs += 1

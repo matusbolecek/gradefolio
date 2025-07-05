@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from pathlib import Path
 
 load_dotenv('token.env')
 
@@ -29,7 +30,7 @@ all_dates = pd.date_range(start = start_date, end = end_date, freq = 'D')
 complete_df = pd.DataFrame({'date': all_dates, 'count': 0})
 
 try:
-    df = pd.read_parquet('local/daily.parquet')
+    df = pd.read_parquet(Path('local') / 'daily.parquet')
     df['date'] = pd.to_datetime(df['date']).dt.date
     complete_df['date'] = complete_df['date'].dt.date
     complete_df = complete_df.set_index('date')

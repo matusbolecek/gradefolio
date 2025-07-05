@@ -26,10 +26,10 @@ def generate(students: list, group_name: str):
             st.write("Retrieving entries from the database")
             reports, exams, finals, selfs = [], [], [], []
             final_string = str('')
-            database_path = f'groups/{group_name}.db'
+            database_path = Path('groups') / f'{group_name}.db'
 
-            if os.path.isfile(database_path):
-                results = dbman.search(idx, database_path, "id")
+            if database_path.exists():
+                results = dbman.search(idx, str(database_path), "id")
                 for a in results:
                     if a[1] == 'REPORT':
                         reports.append(a[2])
@@ -59,7 +59,8 @@ def generate(students: list, group_name: str):
 
                 # Process with LLM
                 st.write("Talking to AI")
-                prompt = open('prompts/summary.txt', 'r').read()
+                prompt_path = Path('prompts') / 'summary.txt'
+                prompt = prompt_path.read_text(encoding = 'utf-8')
 
                 try:
                     response = client.responses.create(
@@ -73,32 +74,32 @@ def generate(students: list, group_name: str):
 
                     # Generate PDF
                     st.write("Generating the PDF")
-                    tex_filename = 'temp.tex'
-                    shutil.copyfile('template.tex', tex_filename)
+                    tex_filename = Path('temp.tex')
+                    template_path = Path('template.tex')
+                    shutil.copyfile(template_path, tex_filename)
 
-                    with open(tex_filename, "a") as tex_file:
+                    with tex_filename.open("a", encoding='utf-8') as tex_file:
                         tex_file.write(ai_output)
                         tex_file.write('\end{document}')
 
-                    pdf, log, _ = PDFLaTeX.from_texfile(tex_filename).create_pdf()
-                    pdf_filename = f'exports/{group_name}/{idx}_{name.replace(" ", "-")}.pdf'
-                    Path(Path(pdf_filename).parent).mkdir(parents=True, exist_ok=True) # Make sure the output folder exists
+                    pdf, log, _ = PDFLaTeX.from_texfile(str(tex_filename)).create_pdf()
+                    pdf_filename = Path('exports') / group_name / f'{idx}_{name.replace(" ", "-")}.pdf'
+                    pdf_filename.parent.mkdir(parents=True, exist_ok=True)
                     
-                    with open(pdf_filename, 'wb') as f:
-                        f.write(pdf)
+                    pdf_filename.write_bytes(pdf)
                     
-                    os.remove('temp.tex')
+                    tex_filename.unlink() # Remove temp.tex
                     progress += step
                     progress_placeholder.progress(progress, text=progressbar_caption)
 
             else:
-                st.error(f'A database error occurred - the database *{group_name}.db* could not be found') # this should not happen
+                st.error(f'A database error occurred - the database *{group_name}.db* could not be found')
 
 def write_stat(count):
-    stat_path = 'local/daily.parquet'
+    stat_path = Path('local') / 'daily.parquet'
     date_stamp = datetime.today().strftime('%Y-%m-%d')
 
-    if os.path.isfile(stat_path):
+    if stat_path.exists():
         df = pd.read_parquet(stat_path)
         
         mask = df['date'] == date_stamp
@@ -111,6 +112,8 @@ def write_stat(count):
         d = {'date': date_stamp, 'count': count}
         df = pd.DataFrame(data=d)
     
+    # Ensure parent dir exists
+    stat_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(stat_path)
     return
 
@@ -118,14 +121,15 @@ st.write("# Generator")
 
 # Group selector
 groups = []
-files = os.listdir('groups')
-for file in files:
-    if Path(file).suffix == '.csv':
-        groups.append(Path(file).stem)
+groups_dir = Path('groups')
+if groups_dir.exists():
+    for file_path in groups_dir.glob('*.csv'):
+        groups.append(file_path.stem)
 group_name = st.selectbox('Class', groups)
 
 if group_name:
-    df = pd.read_csv(f'groups/{group_name}.csv')
+    csv_path = groups_dir / f'{group_name}.csv'
+    df = pd.read_csv(csv_path)
     if 'generate' not in df.columns:
         df['generate'] = False
 
@@ -145,9 +149,10 @@ if group_name:
 
     # Check if file exists
     excluded = []
+    exports_dir = Path('exports') / group_name
     for idx, row in edited_df[edited_df['generate'] == True].iterrows():
-        filename = f'exports/{group_name}/{idx}_{row["Students"].replace(" ", "-")}.pdf'
-        if os.path.isfile(filename):
+        filename = exports_dir / f'{idx}_{row["Students"].replace(" ", "-")}.pdf'
+        if filename.exists():
             excluded.append((idx, row["Students"]))
 
     overwrite = st.checkbox('Overwrite existing outputs', disabled = not len(excluded) > 0)
@@ -169,14 +174,13 @@ if group_name:
 
     for idx, row in df.iterrows():
         name = str(row['Students']).replace(' ', '-')
-        pdf_path = f"exports/{group_name}/{idx}_{name}.pdf"
+        pdf_path = exports_dir / f"{idx}_{name}.pdf"
 
         col1, col2 = st.columns([4, 1])
         col1.write(name)
 
-        if os.path.exists(pdf_path):
-            with open(pdf_path, "rb") as f:
-                pdf_data = f.read()
+        if pdf_path.exists():
+            pdf_data = pdf_path.read_bytes()
             col2.download_button(
                 label="Download",
                 data=pdf_data,

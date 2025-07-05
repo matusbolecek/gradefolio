@@ -27,24 +27,31 @@ def create_group(names: list):
     return df
 
 def move_all(group_name: str, folder: str):
-    move_path = f'local/{folder}/{group_name}-{int(time.time())}'
-    Path(move_path).mkdir(parents=True, exist_ok=True)
+    move_path = Path('local') / folder / f'{group_name}-{int(time.time())}'
+    move_path.mkdir(parents=True, exist_ok=True)
 
     # Exports
-    src_path = f'exports/{group_name}'
-    if os.path.isfile(src_path):
-        Path(f'{move_path}/exports').mkdir(parents=True, exist_ok=True)
-        for file_name in os.listdir(f'src_path'):
-            shutil.move(f'src_path/{file_name}', f'{move_path}/exports')
-
-        os.rmdir(src_path)
+    src_path = Path('exports') / group_name
+    if src_path.exists():
+        exports_dest = move_path / 'exports'
+        exports_dest.mkdir(parents=True, exist_ok=True)
+        
+        for file_path in src_path.iterdir():
+            if file_path.is_file():
+                shutil.move(str(file_path), str(exports_dest))
+        
+        # Remove empty directory if it exists
+        if src_path.exists() and not any(src_path.iterdir()):
+            src_path.rmdir()
 
     # .csv and .db
-    shutil.move(f'groups/{group_name}.csv', move_path)
-    try:
-        shutil.move(f'groups/{group_name}.db', move_path)
-    except:
-        pass # in case a .db does not exist
+    csv_path = Path('groups') / f'{group_name}.csv'
+    db_path = Path('groups') / f'{group_name}.db'
+    
+    if csv_path.exists():
+        shutil.move(str(csv_path), str(move_path))
+    if db_path.exists():
+        shutil.move(str(db_path), str(move_path))
 
 # Session states init
 if 'homescreen' not in st.session_state:
@@ -98,9 +105,10 @@ if st.session_state['add_mode']:
 
         # Save button
         if 'temp_df' in st.session_state and st.button('Save group'):
-            os.makedirs('groups', exist_ok=True)
-            csv_path = f'groups/{new_name}.csv'
-            if not os.path.isfile(csv_path):
+            groups_dir = Path('groups')
+            groups_dir.mkdir(exist_ok=True)
+            csv_path = groups_dir / f'{new_name}.csv'
+            if not csv_path.exists():
                 st.session_state['temp_df'].to_csv(csv_path, index=False)
                 st.success(f'Group "{new_name}" saved successfully!', icon="✅")
             else:
@@ -108,21 +116,23 @@ if st.session_state['add_mode']:
     
     elif method == 'Cloning an existing group': # Cloning
         group_list = []
-        files = os.listdir('groups')
-        for file in files:
-            if Path(file).suffix == '.csv':
-                group_list.append(Path(file).stem)
+        groups_dir = Path('groups')
+        if groups_dir.exists():
+            for file_path in groups_dir.glob('*.csv'):
+                group_list.append(file_path.stem)
+        
         to_clone = st.selectbox('Select the group to clone', group_list)
 
         if to_clone:
-            st.dataframe(pd.read_csv(f'groups/{to_clone}.csv'))
+            clone_csv_path = groups_dir / f'{to_clone}.csv'
+            st.dataframe(pd.read_csv(clone_csv_path))
             confirm_clone = st.button('Clone this group')
             if confirm_clone:
-                os.makedirs('groups', exist_ok=True)
-                csv_path = f'groups/{new_name}.csv'
-                if not os.path.isfile(csv_path):
-                    create_group(pd.DataFrame(pd.read_csv(f'groups/{to_clone}.csv'))['Students'].tolist()).to_csv(csv_path, index=False)
-
+                groups_dir.mkdir(exist_ok=True)
+                csv_path = groups_dir / f'{new_name}.csv'
+                if not csv_path.exists():
+                    clone_df = pd.read_csv(clone_csv_path)
+                    create_group(clone_df['Students'].tolist()).to_csv(csv_path, index=False)
                     st.success(f'Group "{new_name}" saved successfully!', icon="✅")                
                 else:
                     st.error(f'Group "{new_name}" already exists')
@@ -142,9 +152,10 @@ if st.session_state['add_mode']:
 
             clone_button = st.button('Clone this database')
             if clone_button and new_name:
-                os.makedirs('groups', exist_ok=True)
-                csv_path = f'groups/{new_name}.csv'
-                if not os.path.isfile(csv_path):
+                groups_dir = Path('groups')
+                groups_dir.mkdir(exist_ok=True)
+                csv_path = groups_dir / f'{new_name}.csv'
+                if not csv_path.exists():
                     new_df.to_csv(csv_path, index=False)
                     st.success(f'Group "{new_name}" saved successfully!', icon="✅")                
                 else:
@@ -158,16 +169,16 @@ if st.session_state['modify_mode']:
     
     # Read groups:
     groups = []
-    files = os.listdir('groups')
-    for file in files:
-        if Path(file).suffix == '.csv':
-            groups.append(Path(file).stem)
+    groups_dir = Path('groups')
+    if groups_dir.exists():
+        for file_path in groups_dir.glob('*.csv'):
+            groups.append(file_path.stem)
 
     group_name = st.selectbox('Class', groups)
 
     if group_name:
         action = st.selectbox('What to do with the group?', ['Edit', 'Archive', 'Delete'])
-        csv_path = f'groups/{group_name}.csv'
+        csv_path = groups_dir / f'{group_name}.csv'
 
         if action == 'Edit':
             table = st.data_editor(pd.read_csv(csv_path), disabled = ("Reports", "Exams", "Finals", "Selfs", "Sum"))
@@ -177,10 +188,12 @@ if st.session_state['modify_mode']:
         elif action == 'Archive' or action == 'Delete':
             table = st.dataframe(pd.read_csv(csv_path))
             
-            try:
-                export_count = len(os.listdir(f'exports/{group_name}'))
-            except:
+            export_dir = Path('exports') / group_name
+            if export_dir.exists():
+                export_count = len(list(export_dir.glob('*')))
+            else:
                 export_count = 0
+                
             st.write(f'Exported report count: {export_count}' if export_count > 0 else 'No exports from this group have been generated')
     
             user_sure = st.toggle(f'I am sure I want to {action.lower()} the group {group_name}')
