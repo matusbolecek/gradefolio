@@ -2,6 +2,8 @@ import streamlit as st
 import os
 from pathlib import Path
 import pandas as pd
+import time
+import shutil
 
 import database_manager as dbman
 
@@ -11,7 +13,7 @@ def go_back(): # Back button
     st.session_state['add_mode'] = False
     st.rerun()
 
-def create_group(names):
+def create_group(names: list):
     data = {
         "Students": names,
         "Reports": [0] * len(names),
@@ -23,6 +25,26 @@ def create_group(names):
     df['Sum'] = df.sum(axis=1, numeric_only=True)
     
     return df
+
+def move_all(group_name: str, folder: str):
+    move_path = f'local/{folder}/{group_name}-{int(time.time())}'
+    Path(move_path).mkdir(parents=True, exist_ok=True)
+
+    # Exports
+    src_path = f'exports/{group_name}'
+    if os.path.isfile(src_path):
+        Path(f'{move_path}/exports').mkdir(parents=True, exist_ok=True)
+        for file_name in os.listdir(f'src_path'):
+            shutil.move(f'src_path/{file_name}', f'{move_path}/exports')
+
+        os.rmdir(src_path)
+
+    # .csv and .db
+    shutil.move(f'groups/{group_name}.csv', move_path)
+    try:
+        shutil.move(f'groups/{group_name}.db', move_path)
+    except:
+        pass # in case a .db does not exist
 
 # Session states init
 if 'homescreen' not in st.session_state:
@@ -133,4 +155,39 @@ if st.session_state['modify_mode']:
     back_button = st.button('Go back')
     if back_button:
         go_back()
-    st.write("Modify group functionality goes here...")
+    
+    # Read groups:
+    groups = []
+    files = os.listdir('groups')
+    for file in files:
+        if Path(file).suffix == '.csv':
+            groups.append(Path(file).stem)
+
+    group_name = st.selectbox('Class', groups)
+
+    if group_name:
+        action = st.selectbox('What to do with the group?', ['Edit', 'Archive', 'Delete'])
+        csv_path = f'groups/{group_name}.csv'
+
+        if action == 'Edit':
+            table = st.data_editor(pd.read_csv(csv_path), disabled = ("Reports", "Exams", "Finals", "Selfs", "Sum"))
+            if st.button('Save changes'):
+                table.to_csv(csv_path, index=False)
+    
+        elif action == 'Archive' or action == 'Delete':
+            table = st.dataframe(pd.read_csv(csv_path))
+            
+            try:
+                export_count = len(os.listdir(f'exports/{group_name}'))
+            except:
+                export_count = 0
+            st.write(f'Exported report count: {export_count}' if export_count > 0 else 'No exports from this group have been generated')
+    
+            user_sure = st.toggle(f'I am sure I want to {action.lower()} the group {group_name}')
+            proceed_button = st.button('Proceed', disabled = not user_sure)
+            if proceed_button:
+                move_all(group_name, action.lower())
+                st.rerun()
+
+    else:
+        st.info('No groups to modify!')
