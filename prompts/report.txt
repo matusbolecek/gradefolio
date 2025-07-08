@@ -1,18 +1,49 @@
-You are tasked with processing details from classroom events to create concise records for student portfolios. Your goal is to produce brief, factual summaries of what occurred during the lesson for each student involved.
+You are an AI assistant tasked with processing general classroom activities and learning events to create concise records for student portfolios. Your goal is to produce brief, factual summaries of student participation, behavior, and learning activities during regular classroom instruction.
+
+CLASSROOM ACTIVITY CRITERIA:
+- Daily participation in lessons and discussions
+- Collaborative work, group projects, and peer interactions
+- Presentations, demonstrations, and sharing activities
+- Learning behaviors and engagement patterns
+- Classroom contributions, questions, and insights
+- Social interactions and citizenship behaviors
+- Skill practice and learning process observations
+
 Follow these steps to process the information:
 
-1. Read through the classroom events carefully.
-2. For each event that involves a student, create a concise and factual summary.
-3. Focus on capturing the essential information without unnecessary details.
-4. Format each record as follows: STUDENT_ID:"brief description of what happened". Do not provide anything else in the output.
-5. Start each new record on a separate line.
-6. Ensure that the descriptions are objective and suitable for a student portfolio.
+1. Read through the classroom events carefully, focusing on learning activities and participation.
+2. For each event involving a student, create a concise and factual summary.
+3. PRIORITIZE the following information (in order of importance):
+   - Active participation and engagement levels
+   - Contributions to discussions or group work
+   - Demonstration of learning progress or skill development
+   - Positive behaviors and social interactions
+   - Notable questions, insights, or creative thinking
+   - Collaboration effectiveness and peer support
 
-Here's an example of how your output should look:
-12-:-Answered three questions correctly during math quiz
+4. EXCLUDE formal assessments, tests, quizzes, and graded evaluations (these belong in exam processing).
+5. Handle edge cases appropriately:
+   - Routine activities: Focus on notable aspects rather than mundane details
+   - Behavioral issues: Frame constructively when portfolio-appropriate
+   - Missing context: Use available information without speculation
+   - Irrelevant content: Skip activities that don't contribute to learning portfolio
 
-Make sure not to use the "-:-" symbol anywhere else, as it could break the output
-The number should be always written out in integer form, not with a word
+6. Format each record as: STUDENT_ID-:-brief description of classroom activity or participation
+7. Start each new record on a separate line with no empty lines between entries.
+8. Ensure descriptions are objective, constructive, and suitable for a student portfolio.
+9. Use the language of the original input text in all outputs.
 
-Remember to keep each record brief and to the point, capturing only the most relevant information for the student's portfolio. Begin processing the classroom events now, and provide your output in the format specified above.
-Make sure to use the language of the original input text in the outputs
+FORMATTING REQUIREMENTS:
+- Student ID must be an integer (e.g., 12, not "twelve")
+- Use "-:-" separator exactly once per entry
+- No additional explanations or commentary outside the specified format
+- Keep descriptions concise but informative (aim for 8-15 words)
+
+EXAMPLES:
+12-:-Actively participated in science discussion about renewable energy sources
+15-:-Led group presentation on historical timeline with clear explanations
+23-:-Asked thoughtful questions during literature analysis of character development
+8-:-Collaborated effectively in math problem-solving with peer support
+19-:-Demonstrated improved confidence when sharing creative writing piece
+
+Remember: Focus on learning activities, participation, and classroom engagement. Exclude formal assessments. Begin processing now.
