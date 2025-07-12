@@ -1,5 +1,4 @@
 import streamlit as st
-import os
 from pathlib import Path
 import pandas as pd
 import time
@@ -7,13 +6,13 @@ import shutil
 
 import database_manager as dbman
 
-def go_back(): # Back button
+def go_back() -> None: # Back button
     st.session_state['homescreen'] = True
     st.session_state['modify_mode'] = False
     st.session_state['add_mode'] = False
     st.rerun()
 
-def create_group(names: list):
+def create_group(names: list[str]) -> pd.DataFrame:
     data = {
         "Students": names,
         "Reports": [0] * len(names),
@@ -26,7 +25,7 @@ def create_group(names: list):
     
     return df
 
-def move_all(group_name: str, folder: str):
+def move_all(group_name: str, folder: str) -> None:
     move_path = Path('local') / folder / f'{group_name}-{int(time.time())}'
     move_path.mkdir(parents=True, exist_ok=True)
 

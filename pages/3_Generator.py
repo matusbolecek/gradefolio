@@ -20,7 +20,7 @@ except OpenAIError as e:
     st.error(f"Failed to initialize OpenAI client: {e}")
     st.stop()
 
-def generate(students: list, group_name: str):
+def generate(students: list, group_name: str) -> None:
     progressbar_caption = f'Processing {len(students)} file{"s" if len(students) != 1 else ""}'
     progress, step = 0.0, 1.0 / len(students)
     progress_placeholder = st.sidebar.empty()
@@ -102,28 +102,6 @@ def generate(students: list, group_name: str):
 
             else:
                 st.error(f'A database error occurred - the database *{group_name}.db* could not be found')
-
-def write_stat(count):
-    stat_path = Path('local') / 'daily.parquet'
-    date_stamp = datetime.today().strftime('%Y-%m-%d')
-
-    if stat_path.exists():
-        df = pd.read_parquet(stat_path)
-        
-        mask = df['date'] == date_stamp
-        if mask.any():
-            df.loc[mask, 'count'] += count
-        else:
-            df = pd.concat([df, pd.DataFrame([{'date': date_stamp, 'count': count}])], ignore_index=True)
-        
-    else:
-        d = {'date': date_stamp, 'count': count}
-        df = pd.DataFrame(data=d)
-    
-    # Ensure parent dir exists
-    stat_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(stat_path)
-    return
 
 st.write("# Generator")
 

@@ -25,11 +25,30 @@ def successful(keyword: str):
         st.session_state['processed_text'] = None
         st.rerun()
 
-def save_group_entry(group_name, timestamp = None) -> None:
-    file_path = Path('local') / 'group_freq.parquet'
+def write_stat(count: int) -> None:
+    stat_path = Path('local') / 'daily.parquet'
+    date_stamp = datetime.today().strftime('%Y-%m-%d')
+
+    if stat_path.exists():
+        df = pd.read_parquet(stat_path)
+        
+        mask = df['date'] == date_stamp
+        if mask.any():
+            df.loc[mask, 'count'] += count
+        else:
+            df = pd.concat([df, pd.DataFrame([{'date': date_stamp, 'count': count}])], ignore_index=True)
+        
+    else:
+        d = {'date': date_stamp, 'count': count}
+        df = pd.DataFrame(data=d)
     
-    if timestamp is None:
-        timestamp = datetime.now()
+    # Ensure parent dir exists
+    stat_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(stat_path)
+
+def save_group_entry(group_name: str) -> None:
+    file_path = Path('local') / 'group_freq.parquet'
+    timestamp = datetime.now()
     
     new_entry = pd.DataFrame({'timestamp': [timestamp], 'group': [group_name]})
     
@@ -176,6 +195,7 @@ else:
             df['Sum'] = df.sum(axis=1, numeric_only=True)
             df.to_csv(csv_path, index=False)
             save_group_entry(st.session_state["processed_text"][0]) # Write timestamp with group
+            write_stat(correct_inputs)
 
             if wrong_inputs == 0:
                 successful('All')
