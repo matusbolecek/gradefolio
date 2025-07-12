@@ -5,18 +5,59 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
+import json
+from typing import Optional
 
 load_dotenv('token.env')
+
+config_path = Path('local') / 'config.json'
+
+if Path.exists(config_path):
+    with open('config.json', 'r') as f:
+        config = json.load(f)
+else:
+    config = False
 
 st.set_page_config(
     page_title="Gradefolio",
     page_icon="👋",
 )
 
-st.write("# Welcome to Gradefolio! 👋")
+def find_most_frequent_group(window_minutes=20) -> Optional[str]:
+    file_path = Path('local') / 'group_freq.parquet'
+    if not Path(file_path).exists():
+        return None
+    
+    df = pd.read_parquet(file_path)
+
+    # Convert timestamp column to datetime if needed
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    
+    current_time = datetime.now()
+    
+    start_time = current_time - timedelta(minutes=window_minutes)
+    end_time = current_time + timedelta(minutes=window_minutes)
+    
+    mask = (df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)
+    filtered_df = df[mask]
+    
+    if len(filtered_df) == 0:
+        return None
+        
+    return str(filtered_df['group'].value_counts().index[0])
+
+name_section = f', {config["name"]}' if config else ''
+st.write(f"# Welcome to Gradefolio{name_section}! 👋")
+
+most_frequent = find_most_frequent_group()
+
+# Simple quick suggestion on homepage based on time
+if most_frequent != None:
+    st.session_state['selected_group'] = most_frequent
+    st.divider()
+    st.page_link("pages/1_Create.py", label=f"Want to add a quick entry for the group {most_frequent}")
 
 # Heatmap of contribs
-
 if st.context.theme.type == 'dark':
     colorscale = [[0, '#0d1117'], [0.1, '#161b22'], [0.3, '#21262d'], [0.5, '#1f6feb'], [0.7, '#58a6ff'], [1, '#79c0ff']]
     border_color = '#30363d'
@@ -54,8 +95,8 @@ if current_length < total_cells:
 
 complete_df = complete_df.tail(total_cells)
 
-z_matrix = complete_df['count'].values.reshape(rows, days_per_row)
-dates_matrix = complete_df['date'].values.reshape(rows, days_per_row)
+z_matrix = np.array(complete_df['count'].values).reshape(rows, days_per_row)
+dates_matrix = np.array(complete_df['date'].values).reshape(rows, days_per_row)
 
 fig = go.Figure(data=go.Heatmap(
     z = z_matrix,

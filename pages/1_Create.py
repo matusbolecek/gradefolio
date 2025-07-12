@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 from openai import OpenAI, OpenAIError
 import pandas as pd
-import io
+from datetime import datetime
 
 import database_manager as dbman
 
@@ -25,6 +25,25 @@ def successful(keyword: str):
         st.session_state['processed_text'] = None
         st.rerun()
 
+def save_group_entry(group_name, timestamp = None) -> None:
+    file_path = Path('local') / 'group_freq.parquet'
+    
+    if timestamp is None:
+        timestamp = datetime.now()
+    
+    new_entry = pd.DataFrame({'timestamp': [timestamp], 'group': [group_name]})
+    
+    if Path(file_path).exists():
+        existing_df = pd.read_parquet(file_path)
+        df = pd.concat([existing_df, new_entry], ignore_index=True)
+    else:
+        df = new_entry
+    
+    df.to_parquet(file_path, index=False)
+
+if 'selected_group' not in st.session_state:
+    st.session_state['selected_group'] = None
+
 if 'error_msg' not in st.session_state: # init for later error handling
     st.session_state['error_msg'] = None
 
@@ -41,7 +60,8 @@ if st.session_state['processed_text'] == None:
         for file_path in groups_dir.glob('*.csv'):
             groups.append(file_path.stem)
 
-    group_name = st.selectbox('Class', groups)
+    group_index = 0 if st.session_state['selected_group'] == None else groups.index(st.session_state['selected_group'])
+    group_name = st.selectbox('Class', groups, index=group_index)
 
     if group_name:
         st.subheader('Create an input')
@@ -155,6 +175,7 @@ else:
         if correct_inputs > 0:
             df['Sum'] = df.sum(axis=1, numeric_only=True)
             df.to_csv(csv_path, index=False)
+            save_group_entry(st.session_state["processed_text"][0]) # Write timestamp with group
 
             if wrong_inputs == 0:
                 successful('All')
