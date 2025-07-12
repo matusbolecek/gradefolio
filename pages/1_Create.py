@@ -3,11 +3,20 @@ import os
 from pathlib import Path
 from openai import OpenAI, OpenAIError
 import pandas as pd
+import io
 
 import database_manager as dbman
 
 api_key = os.getenv('OPENAI_API_KEY')
-client = OpenAI()
+if not api_key:
+    st.error("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
+    st.stop()
+
+try:
+    client = OpenAI()
+except OpenAIError as e:
+    st.error(f"Failed to initialize OpenAI client: {e}")
+    st.stop()
 
 @st.dialog("Update succesful")
 def successful(keyword: str):
@@ -50,7 +59,7 @@ if st.session_state['processed_text'] == None:
                 try:
                     transcript = client.audio.transcriptions.create(
                     model="whisper-1",
-                    file = audio_value
+                    file = audio_value # type: ignore
                     )
                 except OpenAIError as e:
                     st.error(f'Error: {e}')
@@ -99,21 +108,46 @@ else:
         csv_path = groups_dir / f'{st.session_state["processed_text"][0]}.csv'
         df = pd.read_csv(csv_path)
 
-        correct_inputs, wrong_inputs = 0, 0
-        for line in (list(iter(st.session_state['processed_text'][2].splitlines()))):       
-            num, comment = line.split('-:-')
+    correct_inputs, wrong_inputs = 0, 0
+    col_name = f"{st.session_state['processed_text'][1]}s"
+    
+    if col_name not in df.columns:
+        st.session_state['error_msg'] = f"Column '{col_name}' not found in database"
+        st.error(st.session_state['error_msg'])
+    else:
+        for line in st.session_state['processed_text'][2].splitlines():
+            if not line.strip():  # Skip empty line
+                continue
+                
             try:
-                num = int(num) # Check if the num is in integer form
-                dbman.add(str(num), st.session_state['processed_text'][1].upper(), comment, str(db_path)) # Add entry into db
-            except ValueError:
-                st.session_state['error_msg'] = ('The input was processed incorrectly. Try again') # These do not show
-                wrong_inputs += 1
-            except:
-                st.session_state['error_msg'] = ('An error occured while saving to the database')
-                wrong_inputs += 1
-            else:
-                df.loc[int(num), f"{st.session_state['processed_text'][1]}s"] += 1 # Entry counter
+                if '-:-' not in line:
+                    raise ValueError("Invalid line format")
+                
+                num_str, comment = line.split('-:-', 1)  # Split only on first occurrence
+                num = int(num_str.strip())
+                comment = comment.strip()
+                
+                if not (0 <= num < len(df)):
+                    raise IndexError(f"Student number {num} out of range")
+                
+                dbman.add(str(num), st.session_state['processed_text'][1].upper(), comment, str(db_path))
+                
+                df.at[num, col_name] += 1
                 correct_inputs += 1
+                
+            except ValueError as e:
+                st.session_state['error_msg'] = f'Invalid input format in line: "{line[:50]}..."'
+                wrong_inputs += 1
+            except IndexError as e:
+                st.session_state['error_msg'] = f'Student number out of range: {e}'
+                wrong_inputs += 1
+            except Exception as e:
+                st.session_state['error_msg'] = f'Database error: {str(e)}'
+                wrong_inputs += 1
+
+        # Final error msg in case of errors
+        if st.session_state['error_msg'] and wrong_inputs > 0:
+            st.error(st.session_state['error_msg'])
         
         if st.session_state['error_msg'] != None:
             st.error(st.session_state['error_msg'])

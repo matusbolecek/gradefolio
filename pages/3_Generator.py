@@ -10,7 +10,15 @@ from datetime import datetime
 import database_manager as dbman
 
 api_key = os.getenv('OPENAI_API_KEY')
-client = OpenAI()
+if not api_key:
+    st.error("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
+    st.stop()
+
+try:
+    client = OpenAI(api_key=api_key)
+except OpenAIError as e:
+    st.error(f"Failed to initialize OpenAI client: {e}")
+    st.stop()
 
 def generate(students: list, group_name: str):
     progressbar_caption = f'Processing {len(students)} file{"s" if len(students) != 1 else ""}'
@@ -80,7 +88,7 @@ def generate(students: list, group_name: str):
 
                     with tex_filename.open("a", encoding='utf-8') as tex_file:
                         tex_file.write(ai_output)
-                        tex_file.write('\end{document}')
+                        tex_file.write(r'\end{document}')
 
                     pdf, log, _ = PDFLaTeX.from_texfile(str(tex_filename)).create_pdf()
                     pdf_filename = Path('exports') / group_name / f'{idx}_{name.replace(" ", "-")}.pdf'
@@ -106,7 +114,7 @@ def write_stat(count):
         if mask.any():
             df.loc[mask, 'count'] += count
         else:
-            df = df.append({'date': date_stamp, 'count': count}, ignore_index=True)
+            df = pd.concat([df, pd.DataFrame([{'date': date_stamp, 'count': count}])], ignore_index=True)
         
     else:
         d = {'date': date_stamp, 'count': count}
