@@ -6,6 +6,7 @@ import pandas as pd
 from datetime import datetime
 
 import database_manager as dbman
+from consts import Prompts
 
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
@@ -98,7 +99,8 @@ if st.session_state["processed_text"] == None:
 
     if group_name:
         st.subheader("Create an input")
-        choice = st.selectbox("Input type", ["Report", "Exam", "Final", "Self"])
+        prompter = Prompts()
+        choice = st.selectbox("Input type", prompter.types)
 
         audio_value = st.audio_input("Record a voice message")
         process_button = st.button("Process audio", disabled=not audio_value)
@@ -111,30 +113,33 @@ if st.session_state["processed_text"] == None:
                 st.write("Transcribing audio...")
                 try:
                     transcript = client.audio.transcriptions.create(
-                        model="whisper-1", file=audio_value  # type: ignore
+                        model="whisper-1", file=audio_value
                     )
                 except OpenAIError as e:
                     st.error(f"Error: {e}")
                 else:
                     st.write("Processing text...")
-                    prompt_path = Path("prompts") / f"{choice.lower()}.txt"
-                    prompt = prompt_path.read_text(encoding="utf-8")
+                    prompt = prompter.get_prompt(choice)
 
                     try:
                         response = client.responses.create(
                             model="gpt-4.1", input=prompt + transcript.text
                         )
+
                     except OpenAIError as e:
                         st.error(f"Error: {e}")
+
                     else:
                         try:
                             for line in response.output_text.splitlines():
                                 num, comment = line.split("-:-")
+
                         except:
                             st.session_state["error_msg"] = (
                                 f"An error occurred - Please try again. The AI output is *{response.output_text}*"
                             )
                             st.rerun()
+
                         else:
                             st.session_state["processed_text"] = [
                                 group_name,
@@ -204,9 +209,11 @@ else:
                     f'Invalid input format in line: "{line[:50]}..."'
                 )
                 wrong_inputs += 1
+
             except IndexError as e:
                 st.session_state["error_msg"] = f"Student number out of range: {e}"
                 wrong_inputs += 1
+
             except Exception as e:
                 st.session_state["error_msg"] = f"Database error: {str(e)}"
                 wrong_inputs += 1

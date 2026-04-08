@@ -1,25 +1,19 @@
 import streamlit as st
-import os
 from pathlib import Path
 import pandas as pd
-from pdflatex import PDFLaTeX
-import shutil
-from openai import OpenAI, OpenAIError
-from datetime import datetime
+from openai import OpenAIError
 
 import database_manager as dbman
+from consts import Prompts
+from utils import NoApiKey, TexBuild, Model
 
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    st.error(
-        "OpenAI API key not found. Please set the OPENAI_API_KEY environment variable."
-    )
-    st.stop()
-
+# Init openai
 try:
-    client = OpenAI(api_key=api_key)
-except OpenAIError as e:
-    st.error(f"Failed to initialize OpenAI client: {e}")
+    model = Model()
+    client = model.client
+
+except (NoApiKey, OpenAIError) as e:
+    st.write(f"An error has occured: {e}")
     st.stop()
 
 
@@ -30,6 +24,8 @@ def generate(students: list, group_name: str) -> None:
     progress, step = 0.0, 1.0 / len(students)
     progress_placeholder = st.sidebar.empty()
     progress_placeholder.progress(progress, text=progressbar_caption)
+
+    tex_builder = TexBuild(group_name)
 
     for sets in students:
         idx, name = sets[0], sets[1]
@@ -72,39 +68,22 @@ def generate(students: list, group_name: str) -> None:
 
                 # Process with LLM
                 st.write("Talking to AI")
-                prompt_path = Path("prompts") / "summary.txt"
-                prompt = prompt_path.read_text(encoding="utf-8")
+                prompter = Prompts()
+                prompt = prompter.summary
 
                 try:
                     response = client.responses.create(
                         model="gpt-4.1", input=prompt + final_string
                     )
+
                 except OpenAIError as e:
                     st.error(f"Error: {e}")
+
                 else:
-                    ai_output = response.output_text.replace("**name**", name)
-
-                    # Generate PDF
+                    # Generate PDF - Out
                     st.write("Generating the PDF")
-                    tex_filename = Path("temp.tex")
-                    template_path = Path("template.tex")
-                    shutil.copyfile(template_path, tex_filename)
+                    tex_builder.create(response.output_text, name, idx)
 
-                    with tex_filename.open("a", encoding="utf-8") as tex_file:
-                        tex_file.write(ai_output)
-                        tex_file.write(r"\end{document}")
-
-                    pdf, log, _ = PDFLaTeX.from_texfile(str(tex_filename)).create_pdf()
-                    pdf_filename = (
-                        Path("exports")
-                        / group_name
-                        / f'{idx}_{name.replace(" ", "-")}.pdf'
-                    )
-                    pdf_filename.parent.mkdir(parents=True, exist_ok=True)
-
-                    pdf_filename.write_bytes(pdf)
-
-                    tex_filename.unlink()  # Remove temp.tex
                     progress += step
                     progress_placeholder.progress(progress, text=progressbar_caption)
 
@@ -190,4 +169,3 @@ if group_name:
 
         else:
             col2.button(":x: Not created", key=name, disabled=True)
-

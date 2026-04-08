@@ -230,4 +230,3 @@ if st.session_state["modify_mode"]:
 
     else:
         st.info("No groups to modify!")
-
