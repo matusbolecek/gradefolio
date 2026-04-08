@@ -5,18 +5,9 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
-import json
 from typing import Optional
 
 load_dotenv("token.env")
-
-config_path = Path("local") / "config.json"
-
-if Path.exists(config_path):
-    with open("config.json", "r") as f:
-        config = json.load(f)
-else:
-    config = False
 
 st.set_page_config(
     page_title="Gradefolio",
@@ -24,6 +15,7 @@ st.set_page_config(
 )
 
 
+@st.cache_data(ttl=60)
 def find_most_frequent_group(window_minutes=20) -> Optional[str]:
     file_path = Path("local") / "group_freq.parquet"
     if not Path(file_path).exists():
@@ -48,8 +40,7 @@ def find_most_frequent_group(window_minutes=20) -> Optional[str]:
     return str(filtered_df["group"].value_counts().index[0])
 
 
-name_section = f', {config["name"]}' if config else ""
-st.write(f"# Welcome to Gradefolio{name_section}! 👋")
+st.write("# Welcome to Gradefolio! 👋")
 
 most_frequent = find_most_frequent_group()
 
@@ -139,4 +130,3 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig, use_container_width=True)
-

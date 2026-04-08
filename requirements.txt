@@ -2,4 +2,3 @@ pdflatex
 openai
 streamlit
 pandas
-sqlite

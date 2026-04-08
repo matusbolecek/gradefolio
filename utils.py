@@ -14,22 +14,25 @@ class TexBuild:
     def create(self, content, name, idx):
         tex_filename = Path("temp.tex")
 
-        renamed_content = content.replace("**name**", name)
+        try:
+            renamed_content = content.replace("**name**", name)
+            with tex_filename.open("w", encoding="utf-8") as tex_file:
+                tex_file.write(self.template)
+                tex_file.write(renamed_content)
+                tex_file.write(r"\end{document}")
 
-        with tex_filename.open("a", encoding="utf-8") as tex_file:
-            tex_file.write(self.template)
-            tex_file.write(renamed_content)
-            tex_file.write(r"\end{document}")
+            pdf, _, _ = PDFLaTeX.from_texfile(str(tex_filename)).create_pdf()
+            pdf_filename = (
+                Path("exports")
+                / self.group_name
+                / f'{idx}_{name.replace(" ", "-")}.pdf'
+            )
+            pdf_filename.parent.mkdir(parents=True, exist_ok=True)
+            pdf_filename.write_bytes(pdf)
 
-        pdf, _, _ = PDFLaTeX.from_texfile(str(tex_filename)).create_pdf()
-        pdf_filename = (
-            Path("exports") / group_name / f'{idx}_{name.replace(" ", "-")}.pdf'
-        )
-        pdf_filename.parent.mkdir(parents=True, exist_ok=True)
-
-        pdf_filename.write_bytes(pdf)
-
-        tex_filename.unlink()  # Remove temp.tex
+        finally:
+            if tex_filename.exists():
+                tex_filename.unlink()
 
 
 class NoApiKey(Exception):

@@ -1,25 +1,20 @@
 import streamlit as st
-import os
 from pathlib import Path
-from openai import OpenAI, OpenAIError
+from openai import OpenAIError
 import pandas as pd
 from datetime import datetime
 
 import database_manager as dbman
 from consts import Prompts
+from utils import Model, NoApiKey
 
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    st.error(
-        "OpenAI API key not found. Please set the OPENAI_API_KEY environment variable."
-    )
-    st.stop()
-
+# Init openai
 try:
-    client = OpenAI()
+    model = Model()
+    client = model.client
 
-except OpenAIError as e:
-    st.error(f"Failed to initialize OpenAI client: {e}")
+except (NoApiKey, OpenAIError) as e:
+    st.write(f"An error has occured: {e}")
     st.stop()
 
 
@@ -48,8 +43,7 @@ def write_stat(count: int) -> None:
             )
 
     else:
-        d = {"date": date_stamp, "count": count}
-        df = pd.DataFrame(data=d)
+        df = pd.DataFrame([{"date": date_stamp, "count": count}])
 
     # Ensure parent dir exists
     stat_path.parent.mkdir(parents=True, exist_ok=True)
@@ -170,75 +164,73 @@ else:
         csv_path = groups_dir / f'{st.session_state["processed_text"][0]}.csv'
         df = pd.read_csv(csv_path)
 
-    correct_inputs, wrong_inputs = 0, 0
-    col_name = f"{st.session_state['processed_text'][1]}s"
+        correct_inputs, wrong_inputs = 0, 0
+        col_name = f"{st.session_state['processed_text'][1]}s"
 
-    if col_name not in df.columns:
-        st.session_state["error_msg"] = f"Column '{col_name}' not found in database"
-        st.error(st.session_state["error_msg"])
-    else:
-        for line in st.session_state["processed_text"][2].splitlines():
-            if not line.strip():  # Skip empty line
-                continue
-
-            try:
-                if "-:-" not in line:
-                    raise ValueError("Invalid line format")
-
-                num_str, comment = line.split(
-                    "-:-", 1
-                )  # Split only on first occurrence
-                num = int(num_str.strip())
-                comment = comment.strip()
-
-                if not (0 <= num < len(df)):
-                    raise IndexError(f"Student number {num} out of range")
-
-                dbman.add(
-                    str(num),
-                    st.session_state["processed_text"][1].upper(),
-                    comment,
-                    str(db_path),
-                )
-
-                df.at[num, col_name] += 1
-                correct_inputs += 1
-
-            except ValueError as e:
-                st.session_state["error_msg"] = (
-                    f'Invalid input format in line: "{line[:50]}..."'
-                )
-                wrong_inputs += 1
-
-            except IndexError as e:
-                st.session_state["error_msg"] = f"Student number out of range: {e}"
-                wrong_inputs += 1
-
-            except Exception as e:
-                st.session_state["error_msg"] = f"Database error: {str(e)}"
-                wrong_inputs += 1
-
-        # Final error msg in case of errors
-        if st.session_state["error_msg"] and wrong_inputs > 0:
+        if col_name not in df.columns:
+            st.session_state["error_msg"] = f"Column '{col_name}' not found in database"
             st.error(st.session_state["error_msg"])
-
-        if st.session_state["error_msg"] != None:
-            st.error(st.session_state["error_msg"])
-
-        if correct_inputs > 0:
-            df["Sum"] = df.sum(axis=1, numeric_only=True)
-            df.to_csv(csv_path, index=False)
-            save_group_entry(
-                st.session_state["processed_text"][0]
-            )  # Write timestamp with group
-            write_stat(correct_inputs)
-
-            if wrong_inputs == 0:
-                successful("All")
-            else:
-                successful(f"{correct_inputs} / {correct_inputs + wrong_inputs}")
         else:
-            st.error("No correct entries were added to the database!")
+            db = dbman.DatabaseManager(str(db_path))
+
+            for line in st.session_state["processed_text"][2].splitlines():
+                if not line.strip():  # Skip empty line
+                    continue
+
+                try:
+                    if "-:-" not in line:
+                        raise ValueError("Invalid line format")
+
+                    num_str, comment = line.split(
+                        "-:-", 1
+                    )  # Split only on first occurrence
+                    num = int(num_str.strip())
+                    comment = comment.strip()
+
+                    if not (0 <= num < len(df)):
+                        raise IndexError(f"Student number {num} out of range")
+
+                    db.add(
+                        str(num),
+                        st.session_state["processed_text"][1].upper(),
+                        comment,
+                    )
+
+                    df.at[num, col_name] += 1
+                    correct_inputs += 1
+
+                except ValueError as e:
+                    st.session_state["error_msg"] = (
+                        f'Invalid input format in line: "{line[:50]}..."'
+                    )
+                    wrong_inputs += 1
+
+                except IndexError as e:
+                    st.session_state["error_msg"] = f"Student number out of range: {e}"
+                    wrong_inputs += 1
+
+                except Exception as e:
+                    st.session_state["error_msg"] = f"Database error: {str(e)}"
+                    wrong_inputs += 1
+
+            # Final error msg in case of errors
+            if st.session_state["error_msg"] and wrong_inputs > 0:
+                st.error(st.session_state["error_msg"])
+
+            if correct_inputs > 0:
+                df["Sum"] = df.sum(axis=1, numeric_only=True)
+                df.to_csv(csv_path, index=False)
+                save_group_entry(
+                    st.session_state["processed_text"][0]
+                )  # Write timestamp with group
+                write_stat(correct_inputs)
+
+                if wrong_inputs == 0:
+                    successful("All")
+                else:
+                    successful(f"{correct_inputs} / {correct_inputs + wrong_inputs}")
+            else:
+                st.error("No correct entries were added to the database!")
 
     restart = st.button("Restart")
     if restart:
