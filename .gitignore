@@ -1,4 +1,15 @@
+# Mac
 .DS_Store
+
+# Project specific
+*.env
+groups/
+exports/
+local/
+
+###
+# Github teplate for python...
+###
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -208,7 +219,3 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-*.env
-groups/
-exports/
-local/
