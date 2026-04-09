@@ -1,4 +1,4 @@
-# 🎓 Gradefolio: LLM-Powered Student Portfolio & Assessment Generator
+# Gradefolio: LLM-Powered Student Portfolio & Assessment Generator
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![OpenAI](https://img.shields.io/badge/OpenAI-Whisper%20%7C%20GPT--4o-412991.svg)
