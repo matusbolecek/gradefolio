@@ -1,10 +1,8 @@
 # 🎓 Gradefolio: LLM-Powered Student Portfolio & Assessment Generator
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
-![Streamlit](https://img.shields.io/badge/Streamlit-Framework-FF4B4B.svg)
 ![OpenAI](https://img.shields.io/badge/OpenAI-Whisper%20%7C%20GPT--4o-412991.svg)
-![SQLite](https://img.shields.io/badge/SQLite-Database-003B57.svg)
-![LaTeX](https://img.shields.io/badge/LaTeX-PDF_Generation-008080.svg)
+![Streamlit](https://img.shields.io/badge/Streamlit-Framework-FF4B4B.svg)
 
 **Gradefolio** is an educational tool created as a part of my [2025 SOČ Competition entry](https://matusbolecek.com/#expand-soc-ai). It was built mainly as a proof of concept, but delivers a fully working system. Being open source, it can be easily adjusted and extended to one's needs
 
@@ -35,9 +33,9 @@ The core success of this tool relies on complex system prompts (`consts.py`) gro
 * **Frontend:** Streamlit, Plotly (for activity heatmaps/trend visualization)
 * **Backend:** Python, Pandas, SQLite3
 * **AI Integration:** OpenAI API (Whisper-1, GPT-5.2)
-* **Document Generation:** `pdflatex` 
+* **Document Generation:** pdflatex 
 
-## 💻 Installation & Setup
+## Installation & Setup
 
 1. **Clone the repository:**
    ```sh
@@ -62,7 +60,7 @@ The core success of this tool relies on complex system prompts (`consts.py`) gro
    streamlit run Home.py
    ```
 
-## 👨‍💻 Author
+## Author
 This project was developed as the practical component of my research paper *"Generative Artificial Intelligence as a Tool for Modern Education"* 
 
 **Matúš Boleček**
