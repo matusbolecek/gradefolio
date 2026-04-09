@@ -117,7 +117,7 @@ if st.session_state["processed_text"] == None:
 
                     try:
                         response = client.responses.create(
-                            model="gpt-4.1", input=prompt + transcript.text
+                            model=model.version, input=prompt + transcript.text
                         )
 
                     except OpenAIError as e:

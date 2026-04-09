@@ -73,7 +73,7 @@ def generate(students: list, group_name: str) -> None:
 
                 try:
                     response = client.responses.create(
-                        model="gpt-4.1", input=prompt + final_string
+                        model=model.version, input=prompt + final_string
                     )
 
                 except OpenAIError as e:

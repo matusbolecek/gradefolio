@@ -28,4 +28,3 @@ else:
     st.write("# About Gradefolio 👋")
     # This should not happen if the repo is up normally - only in case of connection problems
     st.error("Could not load the README file. Please check your connection.")
-

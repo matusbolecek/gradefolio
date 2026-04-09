@@ -43,6 +43,7 @@ class Model:
     def __init__(self):
         self.api_key = self._load_api_key()
         self.client = self._load_client()
+        self.version = "gpt-5.2"
 
     def _load_api_key(self):
         api_key = os.getenv("OPENAI_API_KEY")
