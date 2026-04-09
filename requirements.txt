@@ -2,3 +2,7 @@ pdflatex
 openai
 streamlit
 pandas
+plotly
+numpy
+dotenv
+requests

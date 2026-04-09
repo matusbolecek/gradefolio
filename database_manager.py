@@ -1,5 +1,5 @@
 import sqlite3
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple
 
 
 class DatabaseManager:
@@ -101,8 +101,3 @@ def search(
     db = DatabaseManager(db_path)
 
     return db.search(search_term, search_by)
-
-
-if __name__ == "__main__":
-    pass
-

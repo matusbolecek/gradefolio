@@ -1,18 +1,14 @@
 import streamlit as st
 from dotenv import load_dotenv
-import plotly.graph_objects as go
+import plotly.express as px
 import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
 load_dotenv("token.env")
 
-st.set_page_config(
-    page_title="Gradefolio",
-    page_icon="👋",
-)
+st.set_page_config(page_title="Gradefolio Dashboard", page_icon="🎓", layout="centered")
 
 
 @st.cache_data(ttl=60)
@@ -22,10 +18,7 @@ def find_most_frequent_group(window_minutes=20) -> Optional[str]:
         return None
 
     df = pd.read_parquet(file_path)
-
-    # Convert timestamp column to datetime if needed
     df["timestamp"] = pd.to_datetime(df["timestamp"])
-
     current_time = datetime.now()
 
     start_time = current_time - timedelta(minutes=window_minutes)
@@ -40,93 +33,109 @@ def find_most_frequent_group(window_minutes=20) -> Optional[str]:
     return str(filtered_df["group"].value_counts().index[0])
 
 
-st.write("# Welcome to Gradefolio! 👋")
+@st.cache_data(ttl=10)
+def get_global_stats():
+    total_classes = 0
+    total_students = 0
+    total_entries = 0
+
+    groups_dir = Path("groups")
+    if groups_dir.exists():
+        for file_path in groups_dir.glob("*.csv"):
+            total_classes += 1
+
+            try:
+                df = pd.read_csv(file_path)
+                total_students += len(df)
+
+                if "Sum" in df.columns:
+                    total_entries += df["Sum"].sum()
+
+            except Exception:
+                pass
+
+    return total_classes, total_students, int(total_entries)
+
+
+st.title("Gradefolio Dashboard")
+st.markdown("Welcome back! Here is an overview of your teaching and grading activity.")
 
 most_frequent = find_most_frequent_group()
-
-# Simple quick suggestion on homepage based on time
 if most_frequent != None:
     st.session_state["selected_group"] = most_frequent
-    st.divider()
-    st.page_link(
-        "pages/1_Create.py",
-        label=f"Want to add a quick entry for the group {most_frequent}",
+    st.info(
+        f"**Quick Resume:** You recently worked on **{most_frequent}**. Head over to [Create](Create) to add more entries."
     )
 
-# Heatmap of contribs
-if st.context.theme.type == "dark":
-    colorscale = [
-        [0, "#0d1117"],
-        [0.1, "#161b22"],
-        [0.3, "#21262d"],
-        [0.5, "#1f6feb"],
-        [0.7, "#58a6ff"],
-        [1, "#79c0ff"],
-    ]
-    border_color = "#30363d"
+classes, students, entries = get_global_stats()
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("Active Classes", classes)
 
-else:  # light
-    colorscale = "greens"
-    border_color = "#e1e4e8"
+with col2:
+    st.metric("Total Students", students)
+
+with col3:
+    st.metric("Portfolio Entries", entries)
+
+st.divider()
+
+st.subheader("Quick Actions")
+col_a, col_b, col_c = st.columns(3)
+
+with col_a:
+    if st.button("Add New Entry", use_container_width=True):
+        st.switch_page("pages/1_Create.py")
+
+with col_b:
+    if st.button("Generate PDFs", use_container_width=True):
+        st.switch_page("pages/3_Generator.py")
+
+with col_c:
+    if st.button("Manage Classes", use_container_width=True):
+        st.switch_page("pages/2_Class_Manager.py")
+
+st.divider()
+
+st.subheader("Activity (Last 30 Days)")
 
 end_date = datetime.now().date()
-start_date = end_date - timedelta(days=89)
+start_date = end_date - timedelta(days=29)
 all_dates = pd.date_range(start=start_date, end=end_date, freq="D")
 complete_df = pd.DataFrame({"date": all_dates, "count": 0})
+complete_df["date"] = complete_df["date"].dt.date
 
 try:
     df = pd.read_parquet(Path("local") / "daily.parquet")
     df["date"] = pd.to_datetime(df["date"]).dt.date
-    complete_df["date"] = complete_df["date"].dt.date
+
     complete_df = complete_df.set_index("date")
     df = df.set_index("date")
     complete_df.update(df)
     complete_df = complete_df.reset_index()
 
 except FileNotFoundError:
-    pass  # file does not exist - all fields will be zeroes
+    pass
 
-complete_df = complete_df.sort_values(by="date")
-
-days_per_row = 30
-rows = 3
-total_cells = rows * days_per_row
-current_length = len(complete_df)
-
-if current_length < total_cells:
-    padding_dates = pd.date_range(
-        start=complete_df["date"].min() - timedelta(days=total_cells - current_length),
-        periods=total_cells - current_length,
-        freq="D",
-    )
-    padding_df = pd.DataFrame({"date": padding_dates, "count": 0})
-    complete_df = pd.concat([padding_df, complete_df], ignore_index=True)
-
-complete_df = complete_df.tail(total_cells)
-
-z_matrix = np.array(complete_df["count"].values).reshape(rows, days_per_row)
-dates_matrix = np.array(complete_df["date"].values).reshape(rows, days_per_row)
-
-fig = go.Figure(
-    data=go.Heatmap(
-        z=z_matrix,
-        colorscale=colorscale,
-        showscale=True,
-        hoverongaps=False,
-        customdata=dates_matrix,
-        hovertemplate="Date: %{customdata}<br>Count: %{z}<extra></extra>",
-        xgap=0.5,
-        ygap=0.5,
-    )
+fig = px.bar(
+    complete_df,
+    x="date",
+    y="count",
+    labels={"date": "", "count": "Entries"},
 )
 
+# Styling for dark/light mode
+theme_color = "#1f6feb" if st.context.theme.type == "dark" else "#2ea043"
+
+fig.update_traces(marker_color=theme_color, marker_line_width=0, opacity=0.8)
 fig.update_layout(
-    title="Entries in the last 90 days",
-    xaxis=dict(title="Days", showticklabels=False, showgrid=False),
-    yaxis=dict(title="", showticklabels=False, showgrid=False),
-    height=170,
-    margin=dict(l=20, r=20, t=40, b=20),
-    plot_bgcolor=border_color,
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+    margin=dict(l=0, r=0, t=10, b=0),
+    xaxis=dict(showgrid=False, fixedrange=True),
+    yaxis=dict(showgrid=True, gridcolor="rgba(128, 128, 128, 0.2)", fixedrange=True),
+    height=250,
+    hovermode="x unified",
 )
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
