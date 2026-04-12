@@ -128,9 +128,9 @@ if st.session_state["processed_text"] == None:
                             for line in response.output_text.splitlines():
                                 num, comment = line.split("-:-")
 
-                        except:
+                        except Exception as e:
                             st.session_state["error_msg"] = (
-                                f"An error occurred - Please try again. The AI output is *{response.output_text}*"
+                                    f"An error occurred - Please try again. The AI output is *{response.output_text}* Error: {e}"
                             )
                             st.rerun()
 
